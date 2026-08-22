@@ -1,0 +1,533 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Ludo King multiplayer game API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Google Sign-In and session operations
+  - name: players
+    description: Player profile operations
+  - name: rooms
+    description: Game room operations
+  - name: leaderboard
+    description: Leaderboard operations
+paths:
+  /auth/google:
+    post:
+      operationId: googleSignIn
+      tags: [auth]
+      summary: Sign in (or register) with a Google ID token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential:
+                  type: string
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "401":
+          description: Invalid Google credential
+
+  /auth/me:
+    get:
+      operationId: getSession
+      tags: [auth]
+      summary: Get the currently signed-in player
+      responses:
+        "200":
+          description: Current player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "401":
+          description: Not signed in
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Clear the session cookie
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/match:
+    put:
+      operationId: saveUnfinishedMatch
+      tags: [auth]
+      summary: Save (or overwrite) the signed-in player's resumable match snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [matchJson]
+              properties:
+                matchJson:
+                  type: ["string", "null"]
+      responses:
+        "204":
+          description: Saved
+        "401":
+          description: Not signed in
+    delete:
+      operationId: clearUnfinishedMatch
+      tags: [auth]
+      summary: Clear the signed-in player's resumable match snapshot
+      responses:
+        "204":
+          description: Cleared
+        "401":
+          description: Not signed in
+
+  /auth/record-offline-result:
+    post:
+      operationId: recordOfflineResult
+      tags: [auth]
+      summary: Record the result of an offline match for the signed-in player
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [won, tokensHome]
+              properties:
+                won:
+                  type: boolean
+                tokensHome:
+                  type: number
+      responses:
+        "204":
+          description: Recorded
+        "401":
+          description: Not signed in
+
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /players:
+    post:
+      operationId: createPlayer
+      tags: [players]
+      summary: Create or upsert a player profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerInput"
+      responses:
+        "201":
+          description: Player created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /players/{playerId}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get player profile
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "404":
+          description: Player not found
+    patch:
+      operationId: updatePlayer
+      tags: [players]
+      summary: Update player profile
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerUpdate"
+      responses:
+        "200":
+          description: Updated player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /players/{playerId}/stats:
+    get:
+      operationId: getPlayerStats
+      tags: [players]
+      summary: Get player game statistics
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerStats"
+
+  /rooms:
+    post:
+      operationId: createRoom
+      tags: [rooms]
+      summary: Create a new game room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomInput"
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+
+  /rooms/{roomCode}:
+    get:
+      operationId: getRoom
+      tags: [rooms]
+      summary: Get room by code
+      parameters:
+        - name: roomCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Room found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "404":
+          description: Room not found
+
+  /rooms/{roomCode}/state:
+    get:
+      operationId: getRoomState
+      tags: [rooms]
+      summary: Get current game state for reconnection
+      parameters:
+        - name: roomCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+        "404":
+          description: Room not found
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get global leaderboard
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /leaderboard/summary:
+    get:
+      operationId: getLeaderboardSummary
+      tags: [leaderboard]
+      summary: Get leaderboard summary stats (total games, active players, etc.)
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Player:
+      type: object
+      required: [id, name, avatarColor, gamesPlayed, gamesWon, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        avatarColor:
+          type: string
+        avatarEmoji:
+          type: ["string", "null"]
+        gamesPlayed:
+          type: number
+        gamesWon:
+          type: number
+        winRate:
+          type: number
+        authProvider:
+          type: string
+          enum: [google, guest]
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    PlayerInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 20
+        avatarColor:
+          type: string
+        avatarEmoji:
+          type: string
+
+    PlayerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 20
+        avatarColor:
+          type: string
+        avatarEmoji:
+          type: string
+
+    PlayerStats:
+      type: object
+      required: [playerId, gamesPlayed, gamesWon, totalTokensHome, totalTokensCut, longestWinStreak]
+      properties:
+        playerId:
+          type: string
+        gamesPlayed:
+          type: number
+        gamesWon:
+          type: number
+        winRate:
+          type: number
+        totalTokensHome:
+          type: number
+        totalTokensCut:
+          type: number
+        longestWinStreak:
+          type: number
+        currentWinStreak:
+          type: number
+        recentGames:
+          type: array
+          items:
+            $ref: "#/components/schemas/GameSummary"
+
+    GameSummary:
+      type: object
+      required: [id, roomCode, playerCount, result, playedAt]
+      properties:
+        id:
+          type: string
+        roomCode:
+          type: string
+        playerCount:
+          type: number
+        result:
+          type: string
+          enum: [win, loss]
+        playedAt:
+          type: string
+
+    Room:
+      type: object
+      required: [id, code, hostPlayerId, maxPlayers, status, isPrivate, createdAt]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        hostPlayerId:
+          type: string
+        maxPlayers:
+          type: number
+        playerCount:
+          type: number
+        status:
+          type: string
+          enum: [waiting, playing, finished]
+        isPrivate:
+          type: boolean
+        allowBots:
+          type: boolean
+        botDifficulty:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    RoomInput:
+      type: object
+      required: [hostPlayerId, maxPlayers]
+      properties:
+        hostPlayerId:
+          type: string
+        maxPlayers:
+          type: number
+        isPrivate:
+          type: boolean
+        allowBots:
+          type: boolean
+        botDifficulty:
+          type: string
+          enum: [easy, medium, hard]
+
+    GameState:
+      type: object
+      required: [roomCode, status, currentTurn, players, diceValue]
+      properties:
+        roomCode:
+          type: string
+        status:
+          type: string
+          enum: [waiting, playing, paused, finished]
+        currentTurn:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GamePlayer"
+        tokensJson:
+          type: ["string", "null"]
+        diceValue:
+          type: ["number", "null"]
+        winnerId:
+          type: ["string", "null"]
+        turnTimeRemaining:
+          type: ["number", "null"]
+
+    GamePlayer:
+      type: object
+      required: [playerId, name, color, isBot, isConnected, tokensHome]
+      properties:
+        playerId:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+          enum: [red, green, yellow, blue]
+        isBot:
+          type: boolean
+        isConnected:
+          type: boolean
+        tokensHome:
+          type: number
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, playerId, playerName, avatarColor, gamesWon, gamesPlayed, winRate]
+      properties:
+        rank:
+          type: number
+        playerId:
+          type: string
+        playerName:
+          type: string
+        avatarColor:
+          type: string
+        avatarEmoji:
+          type: ["string", "null"]
+        gamesWon:
+          type: number
+        gamesPlayed:
+          type: number
+        winRate:
+          type: number
+
+    LeaderboardSummary:
+      type: object
+      required: [totalGamesPlayed, activePlayers, activeRooms, topWinRate]
+      properties:
+        totalGamesPlayed:
+          type: number
+        activePlayers:
+          type: number
+        activeRooms:
+          type: number
+        topWinRate:
+          type: number

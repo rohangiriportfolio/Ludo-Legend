@@ -1,0 +1,20 @@
+name: ludo-legend
+
+services:
+  db:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ludo-legend
+    ports:
+      - "27017:27017"
+    volumes:
+      - ludo-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ludo-db-data:

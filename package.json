@@ -1,0 +1,25 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "preinstall": "node -e \"if(!/pnpm/.test(process.env.npm_config_user_agent||'')){console.error('Use pnpm instead');process.exit(1)}\"",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:ping": "pnpm --filter @workspace/db run ping",
+    "dev": "concurrently -n API,WEB -c blue,green \"pnpm --filter @workspace/api-server run dev\" \"pnpm --filter @workspace/ludo-game run dev\"",
+    "start": "pnpm run build && pnpm --filter @workspace/api-server run start"
+  },
+  "private": true,
+  "dependencies": {
+    "@replit/connectors-sdk": "^0.4.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.9.6",
+    "typescript": "~5.9.3"
+  }
+}
